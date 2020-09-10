@@ -4,15 +4,15 @@
 WAL 就是由此而生，在意外情况下保证数据的可靠性是其最大的责任。除此之外，HBase 的集群间数据持续同步时也是基于 WAL 来实现的，与 Mysql 中的 Binlog 颇有几分相似。
 
 ## WAL在HBase中的实现
-HBase 是基于 Hadoop 开发的 KV 数据库，在实现时充分利用了 Hadoop 中现有的工具，比如 WAL 便是基于 (Hadoop SequenceFile)[https：//cwiki.apache.org/confluence/display/HADOOP2/SequenceFile] 存储的。 
+HBase 是基于 Hadoop 开发的 KV 数据库，在实现时充分利用了 Hadoop 中现有的工具，比如 WAL 便是基于 [Hadoop SequenceFile](https://cwiki.apache.org/confluence/display/HADOOP2/SequenceFile) 存储的。 
 ### hadoop sequence
 终归到底，WAl 生成的文件属于记录型日志文件，其中每一行代表一条记录。纯文本并不适合记录二进制类型的数据，而 Hadoop 的 SequenceFile 却是非常适合，其为二进制键值对提供了一个持久化数据结构。将它作为日志文件存储格式时，用户可以根据实际需求选择键和值的类型。HBase 的预写文件采用的就是 SequenceFile 形式。
 
 ### WAL Provider
 HBase 中关于 WAL 有多种实现（即 ProvideRegionServer），主要是以下几种：
 * filesystem： HBase-1.x 版本中默认采用的模式，基于阻塞模式的 DFSClient，并且采用的是经典的串行写入多副本的形式。在实现中使用的是 FSHLog。
-* asyncfs： HBase-2.x 版本中默认采用的模式，该模式相对于 filesystem 模式具有更低的写入时间延迟，因为其是基于非阻塞的 DFSClient 实现，可以同时并发写入位于多个 Datanode 上的多个副本。该功能是由小米的同学开发贡献的，具体可参考(Apache HBase Improements and Practices at Xiaomi )[https：//www.slideshare.net/HBaseCon/apache-hbase-improvements-and-practices-at-xiaomi]
-* multiwal： 从名称中可以看出，multiwal 可以在同一台 RegionServer 上存在多个 filesystem 或者 asyncfs 实例，可以并行写入。对于整个 RegionServer 而言吞吐量是有明显提升的，但是对于单个 Region 而言，吞吐量并不会得到实质性的提升，具体可参考(Run with > 1 WAL in HRegionServer)[https://issues.apache.org/jira/browse/HBASE-5699]。
+* asyncfs： HBase-2.x 版本中默认采用的模式，该模式相对于 filesystem 模式具有更低的写入时间延迟，因为其是基于非阻塞的 DFSClient 实现，可以同时并发写入位于多个 Datanode 上的多个副本。该功能是由小米的同学开发贡献的，具体可参考 [Apache HBase Improements and Practices at Xiaomi](https://www.slideshare.net/HBaseCon/apache-hbase-improvements-and-practices-at-xiaomi)
+* multiwal： 从名称中可以看出，multiwal 可以在同一台 RegionServer 上存在多个 filesystem 或者 asyncfs 实例，可以并行写入。对于整个 RegionServer 而言吞吐量是有明显提升的，但是对于单个 Region 而言，吞吐量并不会得到实质性的提升，具体可参考 [Run with > 1 WAL in HRegionServer](https://issues.apache.org/jira/browse/HBASE-5699)。
 
 ### FSHLog
 FSHLog 是 WAL 的实现类，其核心功能主要有两个： 
